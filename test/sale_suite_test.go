@@ -75,7 +75,7 @@ var _ = Describe("FlashSaleAggregate", func() {
 		eventsTopic           string
 		producerResponseTopic string
 
-		mockFlashSale  *flashSale.FlashSale
+		mockFlashSale  *flashsale.FlashSale
 		mockEvent *model.Event
 
 		invColl *mongo.Collection
@@ -114,10 +114,10 @@ var _ = Describe("FlashSaleAggregate", func() {
 		_, err = invColl.InsertOne(mockInv)
 		Expect(err).ToNot(HaveOccurred())
 
-		mockFlashSale = &flashSale.FlashSale{
+		mockFlashSale = &flashsale.FlashSale{
 			FlashSaleID: flashSaleID,
-			Items: []flashSale.SoldItem{
-				flashSale.SoldItem{
+			Items: []flashsale.SoldItem{
+				flashsale.SoldItem{
 					ItemID: itemID,
 					UPC:    "test-upc",
 					Weight: 12.24,
@@ -139,7 +139,7 @@ var _ = Describe("FlashSaleAggregate", func() {
 		mockEvent = &model.Event{
 			EventAction:   "insert",
 			CorrelationID: cid,
-			AggregateID:   flashSale.AggregateID,
+			AggregateID:   flashsale.AggregateID,
 			Data:          marshalFlashSale,
 			NanoTime:      time.Now().UnixNano(),
 			UserUUID:      uid,
@@ -160,7 +160,7 @@ var _ = Describe("FlashSaleAggregate", func() {
 			Byf("Consuming Result")
 			c, err := kafka.NewConsumer(&kafka.ConsumerConfig{
 				KafkaBrokers: kafkaBrokers,
-				GroupName:    "aggflashSale.test.group.1",
+				GroupName:    "aggflashsale.test.group.1",
 				Topics:       []string{eventsTopic},
 			})
 			msgCallback := func(msg *sarama.ConsumerMessage) bool {
@@ -170,10 +170,10 @@ var _ = Describe("FlashSaleAggregate", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				if event.UUID == mockEvent.UUID {
-					flashSale := &flashSale.FlashSale{}
+					flashSale := &flashsale.FlashSale{}
 					err = json.Unmarshal(event.Data, flashSale)
 
-					if err == nil && flashSale.FlashSaleID == mockFlashSale.FlashSaleID {
+					if err == nil && flashsale.FlashSaleID == mockflashsale.FlashSaleID {
 						Expect(flashSale).To(Equal(mockFlashSale))
 						return true
 					}
@@ -192,18 +192,18 @@ var _ = Describe("FlashSaleAggregate", func() {
 			time.Sleep(5 * time.Second)
 			// Can't search directly in Mongo if using embedded-arrays
 			mockFindFlashSale := *mockFlashSale
-			mockFindFlashSale.Items = []flashSale.SoldItem{}
+			mockFindflashsale.Items = []flashsale.SoldItem{}
 
 			findResult, err := aggColl.FindOne(mockFindFlashSale)
 			Expect(err).ToNot(HaveOccurred())
 
-			findFlashSale, assertOK := findResult.(*flashSale.FlashSale)
+			findFlashSale, assertOK := findResult.(*flashsale.FlashSale)
 			Expect(assertOK).To(BeTrue())
-			mockFlashSale.ID = findFlashSale.ID
+			mockflashsale.ID = findflashsale.ID
 			Expect(findFlashSale).To(Equal(mockFlashSale))
 
 			invColl.FindOne(map[string]interface{}{
-				"itemID": mockFlashSale.Items[0].ItemID.String(),
+				"itemID": mockflashsale.Items[0].ItemID.String(),
 			})
 			close(done)
 		}, 25)
@@ -211,19 +211,19 @@ var _ = Describe("FlashSaleAggregate", func() {
 		It("should update record", func(done Done) {
 			Byf("Creating update args")
 			filterFlashSale := map[string]interface{}{
-				"flashSaleID": mockFlashSale.FlashSaleID.String(),
+				"flashSaleID": mockflashsale.FlashSaleID.String(),
 			}
-			mockFlashSale.Timestamp = time.Now().Unix()
+			mockflashsale.Timestamp = time.Now().Unix()
 			// Remove ObjectID because this is not passed from gateway
-			mockID := mockFlashSale.ID
-			mockFlashSale.ID = objectid.NilObjectID
+			mockID := mockflashsale.ID
+			mockflashsale.ID = objectid.NilObjectID
 
-			mockFlashSale.Timestamp = 1234
+			mockflashsale.Timestamp = 1234
 			// Can't search directly in Mongo if using embedded-arrays
 			mockUpdateFlashSale := *mockFlashSale
-			mockUpdateFlashSale.ID = objectid.NilObjectID
-			mockUpdateFlashSale.Items = []flashSale.SoldItem{}
-			mockUpdateFlashSale.FlashSaleID = uuuid.UUID{}
+			mockUpdateflashsale.ID = objectid.NilObjectID
+			mockUpdateflashsale.Items = []flashsale.SoldItem{}
+			mockUpdateflashsale.FlashSaleID = uuuid.UUID{}
 
 			update := map[string]interface{}{
 				"filter": filterFlashSale,
@@ -232,7 +232,7 @@ var _ = Describe("FlashSaleAggregate", func() {
 			marshalUpdate, err := json.Marshal(update)
 			Expect(err).ToNot(HaveOccurred())
 			// Reassign back ID so we can compare easily with database-entry
-			mockFlashSale.ID = mockID
+			mockflashsale.ID = mockID
 
 			Byf("Creating update MockEvent")
 			uuid, err := uuuid.NewV4()
@@ -255,7 +255,7 @@ var _ = Describe("FlashSaleAggregate", func() {
 			Byf("Consuming Result")
 			c, err := kafka.NewConsumer(&kafka.ConsumerConfig{
 				KafkaBrokers: kafkaBrokers,
-				GroupName:    "aggflashSale.test.group.1",
+				GroupName:    "aggflashsale.test.group.1",
 				Topics:       []string{producerResponseTopic},
 			})
 			msgCallback := func(msg *sarama.ConsumerMessage) bool {
@@ -291,10 +291,10 @@ var _ = Describe("FlashSaleAggregate", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			mockUpdateFlashSaleFind := *mockFlashSale
-			mockUpdateFlashSaleFind.Items = []flashSale.SoldItem{}
+			mockUpdateFlashSaleFind.Items = []flashsale.SoldItem{}
 			findResult, err := aggColl.FindOne(mockUpdateFlashSaleFind)
 			Expect(err).ToNot(HaveOccurred())
-			findFlashSale, assertOK := findResult.(*flashSale.FlashSale)
+			findFlashSale, assertOK := findResult.(*flashsale.FlashSale)
 			Expect(assertOK).To(BeTrue())
 			Expect(findFlashSale).To(Equal(mockFlashSale))
 
@@ -304,7 +304,7 @@ var _ = Describe("FlashSaleAggregate", func() {
 		It("should delete record", func(done Done) {
 			Byf("Creating delete args")
 			deleteArgs := map[string]interface{}{
-				"flashSaleID": mockFlashSale.FlashSaleID,
+				"flashSaleID": mockflashsale.FlashSaleID,
 			}
 			marshalDelete, err := json.Marshal(deleteArgs)
 			Expect(err).ToNot(HaveOccurred())
@@ -330,7 +330,7 @@ var _ = Describe("FlashSaleAggregate", func() {
 			Byf("Consuming Result")
 			c, err := kafka.NewConsumer(&kafka.ConsumerConfig{
 				KafkaBrokers: kafkaBrokers,
-				GroupName:    "aggflashSale.test.group.1",
+				GroupName:    "aggflashsale.test.group.1",
 				Topics:       []string{producerResponseTopic},
 			})
 			msgCallback := func(msg *sarama.ConsumerMessage) bool {
