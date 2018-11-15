@@ -1,0 +1,81 @@
+version: '3.4'
+
+# NOTE: Cassandra service takes a while to start (~1 minute).
+# So the Kafka and Cassandra service cannot be "linked" directly
+# to go-eventstore-query, some delay is required after starting Zookeeper,
+# Kafka, and Cassandra before go-eventstore-query can be started and used.
+# See the run_test.sh file.
+services:
+  cassandra:
+    image: cassandra:latest
+    container_name: cassandra
+    ports:
+      - "9042:9042"
+
+  kafka:
+    image: wurstmeister/kafka
+    container_name: kafka
+    environment:
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    links:
+      - zookeeper
+    ports:
+     - "9092:9092"
+
+  mongo:
+    image: mongo
+    container_name: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+    ports:
+      - "27017:27017"
+
+  zookeeper:
+    image: wurstmeister/zookeeper
+    container_name: zookeeper
+    ports:
+      - 2181:2181
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.3.10
+    ports:
+      - 2379:2379
+      - 2380:2380
+    environment:
+      ETCD_ADVERTISE_CLIENT_URLS: "http://etcd:2379"
+      ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+
+  go-eventpersistence:
+    image: terrextech/go-eventpersistence:v3.0.0
+    env_file:
+      - ./.envp
+
+  go-eventstore-query:
+    image: terrextech/go-eventstore-query:v3.0.0
+    env_file:
+      - ./.envq
+
+  agg-inventory-cmd:
+    image: terrextech/agg-inventory-cmd:v2.1.0-beta
+    env_file:
+      - ./.env.inventory.cmd
+
+  agg-flashsale-cmd:
+    build:
+      context: ../
+      dockerfile: Dockerfile_test
+      args:
+        SOURCE_REPO: agg-flashsale-cmd
+    image: agg-flashsale-cmd
+    env_file:
+      - ../.env
+
+  agg-flashsale-cmd-test:
+    image: agg-flashsale-cmd
+    command: go test -v ./...
+    env_file:
+      - ../.env
+    environment:
+      CGO_ENABLED: 0
